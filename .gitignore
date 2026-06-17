@@ -1,0 +1,43 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+nbproject/private/
+
+# Build / OS
+*.class
+*.log
+.DS_Store
+
+# Redis snapshot (if redis-server ever runs from project dir)
+dump.rdb
+
+# Env & secrets — never commit
+.env
+*.env
+application-local.yml
+application-local.properties
+secrets.*
+
+# Node / Angular (Week 8)
+node_modules/
+dist/
+.angular/
+
+# Terraform (Week 5)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
