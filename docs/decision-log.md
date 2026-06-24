@@ -48,3 +48,31 @@ Format:
   schema drift and isn't safe for the AWS deploy later. Flyway's plain-SQL migrations are simpler
   to reason about than Liquibase's XML/YAML changelogs for this scope.
 - **Revisit if:** Complex cross-DB or branching migration needs appear (unlikely here).
+
+### [2026-06-18] Schema ownership: Flyway owns DDL, Hibernate set to `validate`
+- **Decision:** Hand-write schema as Flyway migrations; set `spring.jpa.hibernate.ddl-auto: validate`
+  so Hibernate only verifies entities match the migrated schema and never mutates it. Entities are
+  written by hand to map onto the migration, not the other way around.
+- **Alternatives considered:** Entity-first / `ddl-auto: update` (Hibernate generates and alters
+  tables from `@Entity` classes); generating a DDL draft from Hibernate then editing into a migration.
+- **Why:** `update` is non-deterministic, can't do destructive or data migrations, has no review or
+  rollback, and is unsafe against a live DB — a recognised production footgun. Migration-first gives
+  deterministic, reviewable, reproducible schema across environments; `validate` catches entity/schema
+  drift at boot instead of letting it silently diverge. This is the industry-standard setup for
+  production Spring Boot services.
+- **Revisit if:** Never expected to reverse; if draft-generation becomes a useful shortcut, the
+  migration still remains the committed source of truth.
+
+### [2026-06-18] Enum columns: `VARCHAR + CHECK` over native Postgres `ENUM`
+- **Decision:** Model fixed-set columns (`users.role`, `events.status`, etc.) as `VARCHAR` with a
+  `CHECK (col IN (...))` constraint, mapped on the Java side via `@Enumerated(EnumType.STRING)`.
+  The Java enum is the source of truth; the CHECK is a DB-level guardrail. CHECK string values must
+  match the Java enum constant names exactly (same case).
+- **Alternatives considered:** Native Postgres `ENUM` type; a lookup/reference table with a FK.
+- **Why:** Native `ENUM` is rigid to evolve — `ALTER TYPE ... ADD VALUE` has a non-transactional
+  gotcha (conflicts with Flyway's transactional migrations), and removing/renaming values means
+  recreating the type. It also needs custom Hibernate type mapping. `VARCHAR + CHECK` evolves with
+  plain transactional DDL and maps cleanly with `@Enumerated(STRING)`. A lookup table is more
+  flexible but overkill (extra join) for small, rarely-changing sets.
+- **Revisit if:** A set grows large or needs admin-managed values/metadata at runtime → promote that
+  specific column to a lookup table.
